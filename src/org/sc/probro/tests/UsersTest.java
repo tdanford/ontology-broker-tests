@@ -40,7 +40,7 @@ public class UsersTest {
 	
 	@org.junit.Test 
 	public void testGetUsers() throws IOException { 
-		URL ontologiesURL = server.ontologiesURL();
+		URL usersURL = server.usersURL();
 		
 		assertTrue(schemas.containsType("Response"));
 		JSONType responseType = schemas.lookupType("Response");
@@ -48,7 +48,7 @@ public class UsersTest {
 		assertTrue(schemas.containsType(UserTypeName));
 		JSONType userType = schemas.lookupType(UserTypeName);
 
-		JSONObject response = server.httpGet(ontologiesURL, JSONObject.class);
+		JSONObject response = server.httpGet(usersURL, JSONObject.class);
 		
 		assertTrue("Poorly formed or null response", response != null);
 		assertTrue(error(response, responseType.explain(response)), 
