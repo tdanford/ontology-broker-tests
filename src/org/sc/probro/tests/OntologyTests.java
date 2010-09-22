@@ -31,28 +31,40 @@ public class OntologyTests {
 		}
 	}
 	
+	public static String error(Object obj, String explain) { 
+		return String.format("%s => %s", String.valueOf(obj), explain);
+		//return String.valueOf(obj);
+	}
+	
 	@org.junit.Test 
 	public void testGetOntologies() throws IOException { 
 		URL ontologiesURL = server.ontologiesURL();
-		JSONObject obj = server.httpGet(ontologiesURL, JSONObject.class);
-
-		assertTrue("Returned collection was null", obj != null);
 		
-		assertTrue("Schema doesn't contain an 'Ontology' type", schemas.containsType("Ontology"));
+		assertTrue(schemas.containsType("Response"));
+		JSONType responseType = schemas.lookupType("Response");
+		
+		assertTrue(schemas.containsType("Ontology"));
 		JSONType ontologyType = schemas.lookupType("Ontology");
+
+		JSONObject response = server.httpGet(ontologiesURL, JSONObject.class);
 		
-		Iterator keys = obj.keys();
-		while(keys.hasNext()) { 
-			String key = (String)keys.next();
-			try {
-				JSONObject ont = obj.getJSONObject(key);
-				assertTrue(
-						String.format("%s is not of Ontology Type", ont.toString()),
-						ontologyType.contains(ont));
+		assertTrue("Poorly formed or null response", response != null);
+		assertTrue(error(response, responseType.explain(response)), 
+				responseType.contains(response));
+
+		try {
+			JSONArray responseArray = response.getJSONArray("vals");
+
+			for(int i = 0; i < responseArray.length(); i++) { 
+				JSONObject entry = responseArray.getJSONObject(i);
 				
-			} catch (JSONException e) {
-				throw new IllegalArgumentException(String.valueOf(key));
+				assertTrue(
+						error(entry.toString(), ontologyType.explain(entry)),
+						ontologyType.contains(entry));
+
 			}
+		} catch (JSONException e) {
+			throw new IllegalArgumentException(e);
 		}
 	}
 }
