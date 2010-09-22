@@ -16,7 +16,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 
-public class OntologyTests {
+public class UsersTest {
+	
+	private static String UserTypeName = "User";
 	
 	private Server server;
 	private BrokerSchemaEnv schemas;
@@ -37,14 +39,14 @@ public class OntologyTests {
 	}
 	
 	@org.junit.Test 
-	public void testGetOntologies() throws IOException { 
+	public void testGetUsers() throws IOException { 
 		URL ontologiesURL = server.ontologiesURL();
 		
 		assertTrue(schemas.containsType("Response"));
 		JSONType responseType = schemas.lookupType("Response");
 		
-		assertTrue(schemas.containsType("Ontology"));
-		JSONType ontologyType = schemas.lookupType("Ontology");
+		assertTrue(schemas.containsType(UserTypeName));
+		JSONType userType = schemas.lookupType(UserTypeName);
 
 		JSONObject response = server.httpGet(ontologiesURL, JSONObject.class);
 		
@@ -59,8 +61,8 @@ public class OntologyTests {
 				JSONObject entry = responseArray.getJSONObject(i);
 				
 				assertTrue(
-						error(entry.toString(), ontologyType.explain(entry)),
-						ontologyType.contains(entry));
+						error(entry.toString(), userType.explain(entry)),
+						userType.contains(entry));
 
 			}
 		} catch (JSONException e) {
@@ -69,16 +71,5 @@ public class OntologyTests {
 	}
 }
 
-class BrokerSchemaEnv extends SchemaEnv { 
-	public BrokerSchemaEnv() { 
-		super(new File("docs/json-schemas/"));
-	}
-	
-	public JSONType getRequestType() { return lookupType("Request"); } 
-	public JSONType getMetadataType() { return lookupType("Metadata"); } 
-	public JSONType getUserType() { return lookupType("User"); }
-	public JSONType getOntologyType() { return lookupType("Ontology"); }
-	public JSONType getSearchResultType() { return lookupType("SearchResult"); }
-	public JSONType getLinkType() { return lookupType("Link"); }
-}
+
 

@@ -5,6 +5,8 @@ import java.util.regex.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.*;
 
 import org.json.JSONArray;
@@ -42,6 +44,43 @@ public class Server {
 		return c2.isAssignableFrom(c1);
 	}
 	
+	public static int responseCode(URL url, String method) throws IOException { 
+		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
+		cxn.setRequestMethod(method);
+		try { 
+			cxn.connect();
+			int responseCode = cxn.getResponseCode();
+			cxn.getInputStream().close();
+			return responseCode;
+		} catch(Exception e) { 
+			return cxn.getResponseCode();
+		}
+	}
+	
+	public static <T> T httpPut(URL url, JSONObject postObj, Class<T> format) throws IOException { 
+		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
+		cxn.setRequestMethod("POST");
+		cxn.connect();
+		
+		OutputStream os = cxn.getOutputStream();
+		PrintStream ps = new PrintStream(os);
+		ps.println(postObj.toString());
+		
+		ps.close();
+		
+		StringBuilder sb = new StringBuilder();
+		InputStream is = cxn.getInputStream();
+		InputStreamReader isr = new InputStreamReader(is);
+		
+		int c ;
+		while((c = isr.read()) != -1) { sb.append((char)c); }
+		isr.close();
+		
+		String content = sb.toString();
+		
+		return convertContent(content, format);
+	}
+	
 	public static <T> T httpGet(java.net.URL url, Class<T> format) throws IOException { 
 		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
 		cxn.connect();
@@ -57,6 +96,10 @@ public class Server {
 		String content = sb.toString();
 		isr.close();
 
+		return convertContent(content, format);
+	}
+
+	private static <T> T convertContent(String content, Class<T> format) { 
 		try { 
 			if(isSubclass(format, String.class)) {
 
@@ -77,7 +120,6 @@ public class Server {
 			//throw new IllegalArgumentException(e);
 			return null;
 		}
-
 	}
 	
 	public URL requestsURL() { 
