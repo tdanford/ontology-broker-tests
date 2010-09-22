@@ -81,16 +81,5 @@ public class ServerTests {
 		return sb.toString();
 	}
 
-	public static JSONObject httpGET_JSONObject(String urlstring) throws IOException { 
-		URL url = new URL(urlstring);
-		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
-		cxn.connect();
-
-		InputStream is = cxn.getInputStream();
-		InputStreamReader isr = new InputStreamReader(is);
-		JSONObject obj = new JSONObject(isr);
-		isr.close();
-		return obj;
-	}
 }
 
