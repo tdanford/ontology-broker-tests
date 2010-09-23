@@ -48,7 +48,7 @@ public class RequestsTest {
 		assertTrue(schemas.containsType(RequestTypeName));
 		JSONType requestType = schemas.lookupType(RequestTypeName);
 
-		JSONObject response = server.httpGet(requestsURL, JSONObject.class);
+		JSONObject response = server.httpGet(requestsURL, JSONObject.class).response;
 		
 		assertTrue("Poorly formed or null response", response != null);
 		assertTrue(error(response, responseType.explain(response)), 

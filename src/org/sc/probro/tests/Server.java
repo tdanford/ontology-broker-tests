@@ -35,6 +35,11 @@ public class Server {
 	public Server() throws MalformedURLException { 
 		this("default");
 	}
+	
+	public boolean adminReset() throws IOException { 
+		Response<String> response = httpPost(url("/reset"), new JSONObject(), String.class);
+		return response.responseCode == 200;
+	}
 
 	public URL url(String path) throws MalformedURLException { 
 		return new URL(base, path); 
@@ -44,59 +49,96 @@ public class Server {
 		return c2.isAssignableFrom(c1);
 	}
 	
-	public static int responseCode(URL url, String method) throws IOException { 
-		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
-		cxn.setRequestMethod(method);
-		try { 
-			cxn.connect();
-			int responseCode = cxn.getResponseCode();
-			cxn.getInputStream().close();
-			return responseCode;
-		} catch(Exception e) { 
-			return cxn.getResponseCode();
+	public static class Response<T> { 
+		public int responseCode;
+		public T response;
+		public String msg;
+		
+		public Response(int code, T v) { 
+			this(code, v, null);
+		}
+		
+		public Response(int code, T v, String m) { 
+			responseCode = code;
+			response = v;
+			msg = m;
 		}
 	}
 	
-	public static <T> T httpPut(URL url, JSONObject postObj, Class<T> format) throws IOException { 
+	public static final String CONTENT_TYPE_JSON = "application/json";
+	public static final String CONTENT_TYPE_HTML = "text/html";
+	public static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
+	
+	public static <T> Response<T> httpPost(URL url, Object postObj, Class<T> format) throws IOException {
+		
+		String contentType = CONTENT_TYPE_FORM; 
+		Class postClass = postObj.getClass();
+
+		if(isSubclass(postClass, JSONObject.class)) { 
+			contentType = CONTENT_TYPE_JSON;
+		} else if (isSubclass(postClass, String.class)) { 
+			contentType = CONTENT_TYPE_FORM;
+		} else { 
+			throw new IllegalArgumentException(String.format(
+					"Unrecognized content format: %s", format.getSimpleName()));
+		}
+
 		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
 		cxn.setRequestMethod("POST");
-		cxn.connect();
-		
+		cxn.setDoOutput(true);
+		cxn.setRequestProperty("Content-Type", contentType);
+
 		OutputStream os = cxn.getOutputStream();
 		PrintStream ps = new PrintStream(os);
-		ps.println(postObj.toString());
-		
+		ps.println(postObj.toString());		
 		ps.close();
+
+		cxn.connect();
+		int responseCode = cxn.getResponseCode();
+		String content = "";
+		String error = null;
 		
-		StringBuilder sb = new StringBuilder();
-		InputStream is = cxn.getInputStream();
-		InputStreamReader isr = new InputStreamReader(is);
+		try { 
+			StringBuilder sb = new StringBuilder();
+			InputStream is = cxn.getInputStream();
+			InputStreamReader isr = new InputStreamReader(is);
+
+			int c ;
+			while((c = isr.read()) != -1) { sb.append((char)c); }
+			isr.close();
+
+			content = sb.toString();
+			
+		} catch(IOException e) {
+			error = cxn.getResponseMessage();
+		}
 		
-		int c ;
-		while((c = isr.read()) != -1) { sb.append((char)c); }
-		isr.close();
-		
-		String content = sb.toString();
-		
-		return convertContent(content, format);
+		return new Response<T>(responseCode, convertContent(content, format), error);
 	}
 	
-	public static <T> T httpGet(java.net.URL url, Class<T> format) throws IOException { 
+	public static <T> Response<T> httpGet(java.net.URL url, Class<T> format) throws IOException { 
 		HttpURLConnection cxn = (HttpURLConnection) url.openConnection();
 		cxn.connect();
+		int responseCode = cxn.getResponseCode();
+		String error = null;
+		String content = "";
 
-		InputStream is = cxn.getInputStream();
-		InputStreamReader isr = new InputStreamReader(is);
+		try { 
+			InputStream is = cxn.getInputStream();
+			InputStreamReader isr = new InputStreamReader(is);
 
-		StringBuilder sb = new StringBuilder();
-		int readchar = -1;
-		while((readchar = isr.read()) != -1) { 
-			sb.append((char)readchar);
+			StringBuilder sb = new StringBuilder();
+			int readchar = -1;
+			while((readchar = isr.read()) != -1) { 
+				sb.append((char)readchar);
+			}
+			content = sb.toString();
+			isr.close();
+		} catch(IOException e) { 
+			error = cxn.getResponseMessage();
 		}
-		String content = sb.toString();
-		isr.close();
 
-		return convertContent(content, format);
+		return new Response<T>(responseCode, convertContent(content, format), error);
 	}
 
 	private static <T> T convertContent(String content, Class<T> format) { 
@@ -106,9 +148,11 @@ public class Server {
 				return (T)content;
 
 			} else if (isSubclass(format, JSONObject.class)) { 
+				if(content.trim().length() == 0) { return (T)null; }
 				return (T) (new JSONObject(content));
 
 			} else if (isSubclass(format, JSONArray.class)) {
+				if(content.trim().length() == 0) { return (T)null; }
 				return (T) (new JSONArray(content));
 
 			} else { 
@@ -145,6 +189,22 @@ public class Server {
 			throw new IllegalStateException(e);
 		}		
 	}
+	
+	public URL userURL(int userID) { 
+		try { 
+			return url(String.format("/user/%d/", userID));
+		} catch(MalformedURLException e) { 
+			throw new IllegalStateException(e);
+		}				
+	}
+
+	public URL ontologyURL(int ontologyID) { 
+		try { 
+			return url(String.format("/ontology/%d/", ontologyID));
+		} catch(MalformedURLException e) { 
+			throw new IllegalStateException(e);
+		}				
+	}
 
 	public URL ontologiesURL() { 
 		try { 
@@ -153,4 +213,59 @@ public class Server {
 			throw new IllegalStateException(e);
 		}		
 	}
+	
+	public class RequestExample extends JSONObject {
+		
+		public RequestExample() { 
+			super();
+			try {
+				put("search_text", "foo");
+				put("context", "bar blah blah blah");
+				put("provenance", "http://example.com/blah");
+
+				put("ontology", ontologyURL(1).toString());
+				
+				append("metadata", new MetadataExample(this, "akey", "bvalue"));
+				append("metadata", new MetadataExample(this, "ckey", "dvalue"));
+				
+			} catch (JSONException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	public class LinkExample extends JSONObject {
+		
+		public LinkExample(String txt, String urlFragment) throws MalformedURLException { 
+			this(txt, url(urlFragment));
+		}
+		
+		public LinkExample(String txt, URL href) { 
+			try {
+				put("text", txt);
+				put("href", href.toString());
+			} catch (JSONException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	public class MetadataExample extends JSONObject {
+		
+		public MetadataExample() { 
+			this(null, "foo", "bar");
+		}
+		
+		public MetadataExample(RequestExample req, String key, String value) { 
+			super();
+			try {
+				put("metadata_key", key);
+				put("metadata_value", value);
+				
+			} catch (JSONException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
 }

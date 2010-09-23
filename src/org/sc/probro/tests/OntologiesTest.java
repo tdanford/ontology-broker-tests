@@ -46,7 +46,7 @@ public class OntologiesTest {
 		assertTrue(schemas.containsType("Ontology"));
 		JSONType ontologyType = schemas.lookupType("Ontology");
 
-		JSONObject response = server.httpGet(ontologiesURL, JSONObject.class);
+		JSONObject response = server.httpGet(ontologiesURL, JSONObject.class).response;
 		
 		assertTrue("Poorly formed or null response", response != null);
 		assertTrue(error(response, responseType.explain(response)), 
