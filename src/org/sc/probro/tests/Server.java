@@ -166,6 +166,14 @@ public class Server {
 		}
 	}
 	
+	public URL supervisorURL() { 
+		try { 
+			return url("/supervisor");
+		} catch(MalformedURLException e) { 
+			throw new IllegalStateException(e);
+		}
+	}
+	
 	public URL requestsURL() { 
 		try { 
 			return url("/requests");
