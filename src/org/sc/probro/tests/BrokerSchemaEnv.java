@@ -7,7 +7,7 @@ import tdanford.json.schema.SchemaEnv;
 
 public class BrokerSchemaEnv extends SchemaEnv { 
 	public BrokerSchemaEnv() { 
-		super(new File("/Users/tdanford/Documents/eclipse-workspace/Broker/docs/json-schemas/"));
+		super(new File("../Broker/docs/json-schemas/"));
 	}
 	
 	public JSONType getRequestType() { return lookupType("Request"); } 
